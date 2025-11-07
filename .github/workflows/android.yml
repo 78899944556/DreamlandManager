@@ -25,134 +25,33 @@ jobs:
       with:
         gradle-version: '7.4.1'
 
-    - name: 创建修复的 build.gradle 文件
+    - name: 修复仓库配置
       run: |
-        # 检查并修复项目根目录的 build.gradle
+        # 确保 settings.gradle 包含必要的仓库
+        if [ -f settings.gradle ]; then
+          echo "修复 settings.gradle 仓库配置"
+          if ! grep -q "mavenCentral()" settings.gradle; then
+            sed -i '/repositories {/a\        mavenCentral()' settings.gradle
+          fi
+        fi
+        
+        # 确保项目 build.gradle 包含必要的仓库
         if [ -f build.gradle ]; then
-          echo "找到 build.gradle，正在修复..."
-          # 备份原始文件
-          cp build.gradle build.gradle.backup
-          # 添加 mavenCentral() 到 buildscript 仓库
-          sed -i '/buildscript {/,/}/ { /repositories {/a\        mavenCentral()' build.gradle
-          # 添加 mavenCentral() 到 allprojects 仓库
-          sed -i '/allprojects {/,/}/ { /repositories {/a\        mavenCentral()' build.gradle
-        else
-          echo "未找到 build.gradle，创建基础配置..."
-          cat > build.gradle << 'EOF'
-          buildscript {
-              ext.kotlin_version = '1.7.10'
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:7.4.1'
-                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-              }
-          }
-
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-
-          task clean(type: Delete) {
-              delete rootProject.buildDir
-          }
-          EOF
+          echo "修复 build.gradle 仓库配置"
+          if ! grep -q "mavenCentral()" build.gradle; then
+            sed -i '/repositories {/a\        mavenCentral()' build.gradle
+          fi
         fi
 
-        # 检查并修复 app 模块的 build.gradle
-        if [ -f app/build.gradle ]; then
-          echo "找到 app/build.gradle"
-        else
-          echo "创建基础的 app/build.gradle"
-          mkdir -p app
-          cat > app/build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application'
-              id 'org.jetbrains.kotlin.android'
-          }
+    - name: 构建项目
+      run: gradle build --refresh-dependencies --no-daemon --stacktrace
 
-          android {
-              compileSdk 33
+    - name: 运行测试
+      run: gradle test --no-daemon
 
-              defaultConfig {
-                  applicationId "com.example.app"
-                  minSdk 21
-                  targetSdk 33
-                  versionCode 1
-                  versionName "1.0"
-              }
-
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                  }
-              }
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_1_8
-                  targetCompatibility JavaVersion.VERSION_1_8
-              }
-              kotlinOptions {
-                  jvmTarget = '1.8'
-              }
-          }
-
-          dependencies {
-              implementation 'androidx.core:core-ktx:1.9.0'
-              implementation 'androidx.appcompat:appcompat:1.6.0'
-              implementation 'com.google.android.material:material:1.8.0'
-              implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-          }
-          EOF
-        fi
-
-    - name: 创建 settings.gradle 文件
-      run: |
-        if [ ! -f settings.gradle ]; then
-          echo "创建 settings.gradle"
-          cat > settings.gradle << 'EOF'
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          rootProject.name = "Dreamland Manager"
-          include ':app'
-          EOF
-        fi
-
-    - name: 创建 gradle.properties 文件
-      run: |
-        if [ ! -f gradle.properties ]; then
-          echo "创建 gradle.properties"
-          cat > gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx2048m
-          android.useAndroidX=true
-          android.enableJetifier=true
-          EOF
-        fi
-
-    - name: 使用 Gradle 构建
-      run: gradle build --refresh-dependencies --no-daemon
-
-    - name: 上传构建产物
+    - name: 上传 APK
+      if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: android-build
-        path: |
-          app/build/outputs/
-        retention-days: 7
+        name: apk-files
+        path: app/build/outputs/apk/
