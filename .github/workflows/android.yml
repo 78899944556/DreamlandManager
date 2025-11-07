@@ -23,7 +23,7 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v5
       with:
-        gradle-version: '7.4.1'
+        gradle-version: '7.5.1'
 
     - name: 修复仓库配置
       run: |
