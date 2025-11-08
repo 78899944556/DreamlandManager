@@ -11,18 +11,7 @@ android {
         versionName "0.0.8"
     }
 
-    signingConfigs {
-        // 只有在提供签名信息时才配置release签名
-        release {
-            // 使用环境变量或项目属性
-            if (project.hasProperty('KEY_FILE')) {
-                storeFile file(project.property('KEY_FILE'))
-                storePassword project.property('KEY_PASSWORD')
-                keyAlias project.property('KEY_ALIAS')
-                keyPassword project.property('KEY_ALIAS_PASSWORD')
-            }
-        }
-    }
+    // 完全移除 signingConfigs 块
 
     buildTypes {
         debug {
@@ -33,12 +22,7 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // 如果release签名配置了，则使用，否则使用debug签名
-            if (signingConfigs.release.isConfigured()) {
-                signingConfig signingConfigs.release
-            } else {
-                signingConfig signingConfigs.debug
-            }
+            // 不设置 signingConfig，让 Gradle 使用默认的 debug 签名
         }
     }
 
